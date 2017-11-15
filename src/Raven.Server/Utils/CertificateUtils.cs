@@ -22,12 +22,12 @@ namespace Raven.Server.Utils
         public static X509Certificate2 CreateSelfSignedCertificate(string commonNameValue, string issuerName)
         {
             CreateCertificateAuthorityCertificate(commonNameValue + " CA", out AsymmetricKeyParameter caPrivateKey, out var caSubjectName);
-            var selfSignedCertificateBasedOnPrivateKey = CreateSelfSignedCertificateBasedOnPrivateKey(commonNameValue, caSubjectName, caPrivateKey, false, false, 1);
+            var selfSignedCertificateBasedOnPrivateKey = CreateSelfSignedCertificateBasedOnPrivateKey(commonNameValue, caSubjectName, caPrivateKey, false, false, 1, out _);
             selfSignedCertificateBasedOnPrivateKey.Verify();
             return selfSignedCertificateBasedOnPrivateKey;
         }
 
-        public static X509Certificate2 CreateSelfSignedClientCertificate(string commonNameValue, RavenServer.CertificateHolder certificateHolder)
+        public static X509Certificate2 CreateSelfSignedClientCertificate(string commonNameValue, RavenServer.CertificateHolder certificateHolder, out byte[] certBytes)
         {
             var readCertificate = new X509CertificateParser().ReadCertificate(certificateHolder.Certificate.Export(X509ContentType.Cert));
             return CreateSelfSignedCertificateBasedOnPrivateKey(
@@ -36,7 +36,8 @@ namespace Raven.Server.Utils
                 certificateHolder.PrivateKey.Key,
                 true,
                 false,
-                5);
+                5,
+                out certBytes);
         }
 
         public static X509Certificate2 CreateSelfSignedExpiredClientCertificate(string commonNameValue, RavenServer.CertificateHolder certificateHolder)
@@ -48,7 +49,8 @@ namespace Raven.Server.Utils
                 certificateHolder.PrivateKey.Key,
                 true,
                 false,
-                -1);
+                -1,
+                out _);
         }
 
         public static X509Certificate2 CreateSelfSignedCertificateBasedOnPrivateKey(string commonNameValue, 
@@ -56,7 +58,8 @@ namespace Raven.Server.Utils
             AsymmetricKeyParameter issuerPrivKey,
             bool isClientCertificate,
             bool isCaCertificate,
-            int yearsUntilExpiration)
+            int yearsUntilExpiration, 
+            out byte[] certBytes)
         {
             const int keyStrength = 2048;
 
@@ -116,9 +119,10 @@ namespace Raven.Server.Utils
             store.SetKeyEntry(friendlyName, new AsymmetricKeyEntry(subjectKeyPair.Private), new[] { certificateEntry });
             var stream = new MemoryStream();
             store.Save(stream, new char[0], random);
+            certBytes = stream.ToArray();
             var convertedCertificate =
                 new X509Certificate2(
-                    stream.ToArray(), (string)null,
+                    certBytes, (string)null,
                     X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.Exportable);
             stream.Position = 0;
 

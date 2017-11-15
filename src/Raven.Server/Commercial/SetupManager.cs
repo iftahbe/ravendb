@@ -943,8 +943,9 @@ namespace Raven.Server.Commercial
                         {
                             var base64 = setupInfo.Certificate;
                             serverCertBytes = Convert.FromBase64String(base64);
-                            serverCert = new X509Certificate2(serverCertBytes, setupInfo.Password, X509KeyStorageFlags.Exportable);
-
+                            serverCert = string.IsNullOrEmpty(setupInfo.Password)
+                                ? new X509Certificate2(serverCertBytes)
+                                : new X509Certificate2(serverCertBytes, setupInfo.Password, X509KeyStorageFlags.Exportable);
 
                             publicServerUrl = GetServerUrlFromCertificate(serverCert, setupInfo, LocalNodeTag, setupInfo.NodeSetupInfos[LocalNodeTag].Port, out domainFromCert);
 
@@ -967,7 +968,7 @@ namespace Raven.Server.Commercial
                                 await serverStore.LicenseManager.Activate(setupInfo.License, skipLeaseLicense: false);
 
                             serverStore.Server.Certificate =
-                                SecretProtection.ValidateCertificateAndCreateCertificateHolder("Setup", serverCert);
+                                SecretProtection.ValidateCertificateAndCreateCertificateHolder("Setup", serverCert, serverCertBytes, setupInfo.Password);
 
                             if (PlatformDetails.RunningOnPosix)
                                 EnsureCaExistsInOsStores(base64, "setup certificate", serverStore);
@@ -1008,11 +1009,13 @@ namespace Raven.Server.Commercial
                             ? domainFromCert.ToLower()
                             : setupInfo.Domain.ToLower();
 
+                        byte[] certBytes;
                         try
                         {
                             // requires server certificate to be loaded
                             clientCertificateName = $"{name}.client.certificate";
-                            clientCert = await GenerateCertificateTask(clientCertificateName, serverStore);
+                            certBytes = await GenerateCertificateTask(clientCertificateName, serverStore);
+                            clientCert = new X509Certificate2(certBytes, (string)null, X509KeyStorageFlags.Exportable);
                         }
                         catch (Exception e)
                         {
@@ -1035,7 +1038,7 @@ namespace Raven.Server.Commercial
                             entry = archive.CreateEntry($"admin.client.certificate.{name}.pem");
                             using (var entryStream = entry.Open())
                             {
-                                AdminCertificatesHandler.WriteCertificateAsPem(clientCert, null, entryStream);
+                                AdminCertificatesHandler.WriteCertificateAsPem(certBytes, null, entryStream);
                             }
                         }
                         catch (Exception e)
@@ -1410,13 +1413,13 @@ namespace Raven.Server.Commercial
         }
 
         // Duplicate of AdminCertificatesHandler.GenerateCertificateInternal stripped from authz checks, used by an unauthenticated client during setup only
-        public static async Task<X509Certificate2> GenerateCertificateTask(string name, ServerStore serverStore)
+        public static async Task<byte[]> GenerateCertificateTask(string name, ServerStore serverStore)
         {
             if (serverStore.Server.Certificate?.Certificate == null)
                 throw new InvalidOperationException($"Cannot generate the client certificate '{name}' becuase the server certificate is not loaded.");
 
             // this creates a client certificate which is signed by the current server certificate
-            var selfSignedCertificate = CertificateUtils.CreateSelfSignedClientCertificate(name, serverStore.Server.Certificate);
+            var selfSignedCertificate = CertificateUtils.CreateSelfSignedClientCertificate(name, serverStore.Server.Certificate, out var certBytes);
 
             var newCertDef = new CertificateDefinition
             {
@@ -1431,7 +1434,7 @@ namespace Raven.Server.Commercial
             var res = await serverStore.PutValueInClusterAsync(new PutCertificateCommand(Constants.Certificates.Prefix + selfSignedCertificate.Thumbprint, newCertDef));
             await serverStore.Cluster.WaitForIndexNotification(res.Index);
 
-            return selfSignedCertificate;
+            return certBytes;
         }
 
         // Duplicate of AdminCertificatesHandler.ValidateCaExistsInOsStores but this one adds the CA if it doesn't exist.

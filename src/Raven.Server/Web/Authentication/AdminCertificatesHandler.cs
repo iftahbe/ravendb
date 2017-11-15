@@ -98,7 +98,7 @@ namespace Raven.Server.Web.Authentication
             }
 
             // this creates a client certificate which is signed by the current server certificate
-            var selfSignedCertificate = CertificateUtils.CreateSelfSignedClientCertificate(certificate.Name, Server.Certificate);
+            var selfSignedCertificate = CertificateUtils.CreateSelfSignedClientCertificate(certificate.Name, Server.Certificate, out var clientCertBytes);
 
             var newCertDef = new CertificateDefinition
             {
@@ -130,7 +130,7 @@ namespace Raven.Server.Web.Authentication
                 entry = archive.CreateEntry(certificate.Name + ".pem");
                 using (var s = entry.Open())
                 {
-                    WriteCertificateAsPem(selfSignedCertificate, certificate.Password, s);
+                    WriteCertificateAsPem(clientCertBytes, certificate.Password, s);
                 }
             }
 
@@ -138,10 +138,10 @@ namespace Raven.Server.Web.Authentication
         }
 
 
-        public static void WriteCertificateAsPem(X509Certificate2 cert, string password, Stream s)
+        public static void WriteCertificateAsPem(byte[] rawBytes, string password, Stream s)
         {
             var a = new Pkcs12Store();
-            a.Load(new MemoryStream(cert.Export(X509ContentType.Pkcs12, (string)null)), Array.Empty<char>());
+            a.Load(new MemoryStream(rawBytes), password?.ToCharArray() ?? Array.Empty<char>());
             var entry = a.GetCertificate(a.Aliases.Cast<string>().First());
             var key = a.Aliases.Cast<string>().Select(a.GetKey).First(x => x != null);
             
