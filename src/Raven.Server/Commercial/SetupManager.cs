@@ -351,11 +351,6 @@ namespace Raven.Server.Commercial
 
             try
             {
-                var licenseStatus = serverStore.LicenseManager.GetLicenseStatus(setupInfo.License);
-
-                if (licenseStatus.Expired)
-                    throw new InvalidOperationException("The provided license for " + setupInfo.License.Name + " has expired (" + licenseStatus.Expiration + ")");
-
                 AssertNoClusterDefined(serverStore);
 
                 progress.AddInfo("Setting up RavenDB in Let's Encrypt security mode.");
@@ -982,6 +977,22 @@ namespace Raven.Server.Commercial
                 }
             }
 
+            if (setupMode == SetupMode.LetsEncrypt && setupInfo.License == null)
+            {
+                throw new ArgumentException("A license is required when setting up RavenDB with a Let's Encrypt certificate.");
+            }
+
+            if (setupInfo.License != null)
+            {
+                var licenseStatus = serverStore.LicenseManager.GetLicenseStatus(setupInfo.License);
+
+                if (licenseStatus.Expired)
+                    throw new InvalidOperationException("The provided license for " + setupInfo.License.Name + " has expired (" + licenseStatus.Expiration + ")");
+
+                if (setupInfo.NodeSetupInfos.Count > licenseStatus.MaxClusterSize)
+                    throw new ArgumentException($"You are trying to setup a cluster with {setupInfo.NodeSetupInfos.Count} nodes but your license (for {setupInfo.License.Name}) allows a maximum of {licenseStatus.MaxClusterSize} nodes.");
+            }
+                        
             if (setupMode == SetupMode.LetsEncrypt)
             {
                 if (setupInfo.NodeSetupInfos.ContainsKey(LocalNodeTag) == false)
@@ -1165,7 +1176,7 @@ namespace Raven.Server.Commercial
 
                 await DeleteAllExistingCertificates(serverStore);
 
-                if (setupMode == SetupMode.LetsEncrypt && license != null)
+                if (license != null)
                     await serverStore.LicenseManager.Activate(license, skipLeaseLicense: false);
 
                 foreach (var url in otherNodesUrls)
@@ -1311,7 +1322,7 @@ namespace Raven.Server.Commercial
 
                             await DeleteAllExistingCertificates(serverStore);
 
-                            if (setupMode == SetupMode.LetsEncrypt)
+                            if (setupInfo.License != null)
                                 await serverStore.LicenseManager.Activate(setupInfo.License, skipLeaseLicense: false);
 
                             serverStore.Server.Certificate =
@@ -1393,9 +1404,11 @@ namespace Raven.Server.Commercial
                         settingsJson.Modifications = new DynamicJsonValue(settingsJson);
 
                         if (setupMode == SetupMode.LetsEncrypt)
-                        {
                             settingsJson.Modifications[RavenConfiguration.GetKey(x => x.Security.CertificateLetsEncryptEmail)] = setupInfo.Email;
+                        
 
+                        if (setupInfo.License != null)
+                        {
                             try
                             {
                                 var licenseString = JsonConvert.SerializeObject(setupInfo.License, Formatting.Indented);
