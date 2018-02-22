@@ -26,6 +26,8 @@ class certificateModel {
     expirationDate = ko.observable<string>();
     thumbprint = ko.observable<string>(); // primary cert thumbprint
     thumbprints = ko.observableArray<string>(); // all thumbprints
+    
+    replaceImmediately = ko.observable<boolean>(false);
 
     permissions = ko.observableArray<certificatePermissionModel>();
 
@@ -86,7 +88,7 @@ class certificateModel {
         
         this.certificateAsBase64.extend({
             required: {
-                onlyIf: () => this.mode() === "upload"
+                onlyIf: () => this.mode() === "upload" || this.mode() === 'replace'
             } 
         });
     }
@@ -103,6 +105,14 @@ class certificateModel {
             Permissions: this.serializePermissions(),
             SecurityClearance: this.securityClearance()
             //TODO: expiration
+        }
+    }
+    
+    toReplaceCertificateDto() {
+        return {
+            Name: this.name(),
+            Certificate: this.certificateAsBase64(),
+            Password: this.certificatePassphrase(),
         }
     }
     
@@ -145,6 +155,10 @@ class certificateModel {
     
     static upload() {
         return new certificateModel("upload");
+    }
+    
+    static replace() {
+        return new certificateModel("replace");
     }
     
     static fromDto(dto: unifiedCertificateDefinition) {
