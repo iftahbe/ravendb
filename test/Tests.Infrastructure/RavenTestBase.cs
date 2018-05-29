@@ -537,7 +537,7 @@ namespace FastTests
             X509Certificate2 serverCertificate;
             try
             {
-                serverCertificate = new X509Certificate2(serverCertPath);
+                serverCertificate = new X509Certificate2(serverCertPath, (string)null, X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.MachineKeySet | X509KeyStorageFlags.Exportable);
             }
             catch (CryptographicException e)
             {
