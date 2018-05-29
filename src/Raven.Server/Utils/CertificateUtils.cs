@@ -87,7 +87,7 @@ namespace Raven.Server.Utils
             store.Save(memoryStream, Array.Empty<char>(), GetSeededSecureRandom());
             certBytes = memoryStream.ToArray();
 
-            var cert = new X509Certificate2(certBytes, (string)null, X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.Exportable);
+            var cert = new X509Certificate2(certBytes, (string)null, X509KeyStorageFlags.Exportable | X509KeyStorageFlags.MachineKeySet | X509KeyStorageFlags.PersistKeySet);
             RegisterCertificateInOperatingSystem(new X509Certificate2(cert.Export(X509ContentType.Cert)));
             return cert;
         }

@@ -802,7 +802,7 @@ namespace Raven.Server.ServerWide
                             }
 
                             var bytesToSave = Convert.FromBase64String(certBase64);
-                            var newClusterCertificate = new X509Certificate2(bytesToSave, (string)null, X509KeyStorageFlags.Exportable);
+                            var newClusterCertificate = new X509Certificate2(bytesToSave, (string)null, X509KeyStorageFlags.Exportable | X509KeyStorageFlags.MachineKeySet | X509KeyStorageFlags.PersistKeySet);
 
                             if (string.IsNullOrEmpty(Configuration.Security.CertificatePassword) == false)
                             {
