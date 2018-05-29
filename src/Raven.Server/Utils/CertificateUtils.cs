@@ -212,7 +212,7 @@ namespace Raven.Server.Utils
             }
             else
             {
-                var cert = new X509Certificate2(certBytes, (string)null, X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.UserKeySet);
+                var cert = new X509Certificate2(certBytes, (string)null, X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.MachineKeySet);
 
                 // save certificate and private key to OS
                 using (var storeMy = new X509Store(StoreName.My, StoreLocation.CurrentUser))
