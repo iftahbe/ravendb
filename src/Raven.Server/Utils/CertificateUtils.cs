@@ -199,6 +199,30 @@ namespace Raven.Server.Utils
 
             certBytes = stream.ToArray();
 
+            if (PlatformDetails.RunningOnPosix)
+            {
+                var cert = new X509Certificate2(certBytes, (string)null, X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.MachineKeySet);
+                // save certificate and private key to OS
+                using (var storeMy = new X509Store(StoreName.Root, StoreLocation.CurrentUser))
+                {
+                    storeMy.Open(OpenFlags.ReadWrite);
+                    storeMy.Add(cert);
+                    storeMy.Close();
+                }
+            }
+            else
+            {
+                var cert = new X509Certificate2(certBytes, (string)null, X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.UserKeySet);
+
+                // save certificate and private key to OS
+                using (var storeMy = new X509Store(StoreName.My, StoreLocation.CurrentUser))
+                {
+                    storeMy.Open(OpenFlags.ReadWrite);
+                    storeMy.Add(cert);
+                    storeMy.Close();
+                }
+            }
+
             log?.AppendLine($"certBytes.Length = {certBytes.Length}");
             log?.AppendLine($"certBytes in base64 = {Convert.ToBase64String(certBytes)}");
         }
