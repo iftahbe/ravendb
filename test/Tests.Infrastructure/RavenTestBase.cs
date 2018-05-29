@@ -513,7 +513,7 @@ namespace FastTests
             RavenServer server = null)
         {
             var clientCertificate = CertificateUtils.CreateSelfSignedClientCertificate("RavenTestsClient", serverCertificateHolder, out var clietnCertBytes);
-            var serverCertificate = new X509Certificate2(serverCertPath);
+            var serverCertificate = new X509Certificate2(serverCertPath, (string)null, X509KeyStorageFlags.Exportable | X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.MachineKeySet);
             using (var store = GetDocumentStore(new Options
             {
                 AdminCertificate = serverCertificate,

@@ -516,7 +516,7 @@ namespace Raven.Server.Utils.Cli
             X509Certificate2 cert;
             try
             {
-                cert = args.Count == 3 ? new X509Certificate2(path, args[2]) : new X509Certificate2(path);
+                cert = args.Count == 3 ? new X509Certificate2(path, args[2], X509KeyStorageFlags.Exportable | X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.MachineKeySet) : new X509Certificate2(path, (string)null, X509KeyStorageFlags.Exportable | X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.MachineKeySet);
             }
             catch (Exception e)
             {

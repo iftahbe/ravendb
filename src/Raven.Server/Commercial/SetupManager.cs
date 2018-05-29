@@ -555,7 +555,7 @@ namespace Raven.Server.Commercial
 
         private static X509Certificate2 BuildNewPfx(SetupInfo setupInfo, byte[] cert, RSA privateKey)
         {
-            var certificate = new X509Certificate2(cert);
+            var certificate = new X509Certificate2(cert, (string)null, X509KeyStorageFlags.Exportable | X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.MachineKeySet);
             var certWithKey = certificate.CopyWithPrivateKey(privateKey);
 
             Pkcs12Store store = new Pkcs12StoreBuilder().Build();
@@ -584,7 +584,7 @@ namespace Raven.Server.Commercial
             Debug.Assert(certBytes != null);
             setupInfo.Certificate = Convert.ToBase64String(certBytes);
 
-            return new X509Certificate2(certBytes, (string)null, X509KeyStorageFlags.Exportable);
+            return new X509Certificate2(certBytes, (string)null, X509KeyStorageFlags.Exportable | X509KeyStorageFlags.PersistKeySet | X509KeyStorageFlags.MachineKeySet);
         }
 
         private static async Task<(Dictionary<string, string> Challenges, LetsEncryptClient.CachedCertificateResult Cache)> InitialLetsEncryptChallenge(
