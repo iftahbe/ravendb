@@ -1,32 +1,35 @@
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using FastTests.Server.Documents.Queries.Parser;
+using Microsoft.Extensions.Logging;
 using SlowTests.Client;
 using SlowTests.Issues;
 using SlowTests.MailingList;
+using Sparrow.Logging;
 
 namespace Tryouts
 {
     public static class Program
     {
+
         public static async Task Main(string[] args)
         {
-            for (int i = 0; i < 100; i++)
+            LoggingSource.Instance.SetupLogMode(LogMode.Information, @"c:\work\logs\tryouts");
+
+            try
             {
-                try
+                using (var test = new SlowTests.Authentication.AuthenticationLetsEncryptTests())
                 {
-                    Console.WriteLine(i);
-                    using (var test = new RachisTests.DatabaseCluster.EtlFailover())
-                    {
-                        await test.EtlDestinationFailoverBetweenNodesWithinSameCluster();
-                    }
+                    await test.CanGetLetsEncryptCertificateAndRenewIt();
                 }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e);
-                }
-                
             }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
+
+
         }
     }
 }

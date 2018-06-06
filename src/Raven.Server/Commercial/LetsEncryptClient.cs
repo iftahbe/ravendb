@@ -45,7 +45,10 @@ namespace Raven.Server.Commercial
                     return value;
                 }
 
-                value = new HttpClient
+                var handler = new HttpClientHandler();
+                handler.ServerCertificateCustomValidationCallback = (message, certificate2, arg3, arg4) => true;
+
+                value = new HttpClient(handler)
                 {
                     BaseAddress = new Uri(url)
                 };
@@ -94,7 +97,8 @@ namespace Raven.Server.Commercial
         {
             _accountKey = new RSACryptoServiceProvider(4096);
             _client = GetCachedClient(_url);
-            (_directory, _) = await SendAsync<Directory>(HttpMethod.Get, new Uri("directory", UriKind.Relative), null, token);
+
+            (_directory, _) = await SendAsync<Directory>(HttpMethod.Get, new Uri("dir", UriKind.Relative), null, token);
 
             if (File.Exists(_path))
             {
@@ -220,6 +224,19 @@ namespace Raven.Server.Commercial
                 else
                     _nonce = null;
 
+                if (response.StatusCode == HttpStatusCode.BadRequest && response.Content.Headers.ContentType.MediaType == "application/problem+json")
+                {
+                    var problemJson = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    var problem = JsonConvert.DeserializeObject<Problem>(problemJson);
+
+                    // if we got an invalid anti-replay nonce error we should retry
+                    if (problem.Type.Equals("urn:ietf:params:acme:error:badNonce"))
+                        continue;
+
+                    if (problem.Type.Equals("urn:ietf:params:acme:error:malformedRequest"))
+                        _nonce = null;
+                }
+                
                 if(response.IsSuccessStatusCode || hasNonce || _nonce == null )
                 {
                     return response; // either successful or no point in retry

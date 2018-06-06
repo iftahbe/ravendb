@@ -37,7 +37,9 @@ namespace SlowTests.Authentication
 
             UseNewLocalServer(customConfigPath: settingPath);
 
-            var acmeStaging = "https://acme-staging-v02.api.letsencrypt.org/directory";
+
+            //var acmeStaging = "https://acme-staging-v02.api.letsencrypt.org/directory";
+            var acmeStaging = "https://localhost:14000/dir";
             Server.Configuration.Core.AcmeUrl = acmeStaging;
             Server.ServerStore.Configuration.Core.SetupMode = SetupMode.Initial;
 
