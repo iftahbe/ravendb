@@ -167,7 +167,7 @@ exit 0";
             }
         }
 
-        [Fact(Skip = "https://github.com/dotnet/corefx/issues/30691")]
+        [Fact]
         public void CanGetErrorsFromOnDirectoryInitialize()
         {
             string script;
@@ -181,7 +181,7 @@ exit 0";
                 customSettings[RavenConfiguration.GetKey(x => x.Storage.OnDirectoryInitializeExec)] = "bash";
                 customSettings[RavenConfiguration.GetKey(x => x.Storage.OnDirectoryInitializeExecArguments)] = $"{scriptFile} {outputFile}";
 
-                script = "#!/bin/bash\r\necho \"ERROR\nKarmelush is ANGRY\n\" >&2";
+                script = "#!/bin/bash\necho \"ERROR!\nKarmelush is ANGRY\" >&2\nexit 129";
                 File.WriteAllText(scriptFile, script);
                 Process.Start("chmod", $"700 {scriptFile}");
             }
@@ -208,13 +208,11 @@ exit 129";
         }
 
         [WindowsFact]
-        [Fact(Skip = "https://github.com/dotnet/corefx/issues/30691")]
         public async Task CertificateAndMasterKeyExecTest()
         {
             string script;
             IDictionary<string, string> customSettings = new ConcurrentDictionary<string, string>();
 
-            var scriptPath = Path.Combine(Path.GetTempPath(), Path.ChangeExtension(Guid.NewGuid().ToString(), ".ps1"));
             var keyPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
 
             var buffer = new byte[256 / 8];
@@ -227,28 +225,32 @@ exit 129";
 
             var certPath = GenerateAndSaveSelfSignedCertificate();
 
-            var keyArgs = CommandLineArgumentEscaper.EscapeAndConcatenate(new List<string>{"-NoProfile", scriptPath, keyPath});
-            var certArgs = CommandLineArgumentEscaper.EscapeAndConcatenate(new List<string>{"-NoProfile", scriptPath, certPath});
-
             if (PlatformDetails.RunningOnPosix)
-            {
+            {            
+                var scriptPath = Path.Combine(Path.GetTempPath(), Path.ChangeExtension(Guid.NewGuid().ToString(), ".ps1"));
+
+                var keyArgs = CommandLineArgumentEscaper.EscapeAndConcatenate(new List<string>{scriptPath, keyPath});
+                var certArgs = CommandLineArgumentEscaper.EscapeAndConcatenate(new List<string>{scriptPath, certPath});
+                
                 customSettings[RavenConfiguration.GetKey(x => x.Security.MasterKeyExec)] = "bash";
                 customSettings[RavenConfiguration.GetKey(x => x.Security.MasterKeyExecArguments)] = $"{keyArgs}";
                 customSettings[RavenConfiguration.GetKey(x => x.Security.CertificateExec)] = "bash";
                 customSettings[RavenConfiguration.GetKey(x => x.Security.CertificateExecArguments)] = $"{certArgs}";
                 customSettings[RavenConfiguration.GetKey(x => x.Core.ServerUrls)] = "https://" + Environment.MachineName + ":0";
                 
-                script = "#!/bin/bash\r\nbytes = \'$(cat $1)\'\r\necho $bytes";
-
-                // TODO: find a way in bash to read the bytes from file and write them to stdout.
-                // At the moment, we get a warning from cat: "ignored null byte in input" and the certificate we get is corrupted
+                script = "#!/bin/bash\ncat \"$1\"";
 
                 File.WriteAllText(scriptPath, script);
 
                 Process.Start("chmod", $"700 {scriptPath}");
             }
             else
-            {
+            {            
+                var scriptPath = Path.Combine(Path.GetTempPath(), Path.ChangeExtension(Guid.NewGuid().ToString(), ".sh"));
+
+                var keyArgs = CommandLineArgumentEscaper.EscapeAndConcatenate(new List<string>{"-NoProfile", scriptPath, keyPath});
+                var certArgs = CommandLineArgumentEscaper.EscapeAndConcatenate(new List<string>{"-NoProfile", scriptPath, certPath});
+                
                 customSettings[RavenConfiguration.GetKey(x => x.Security.MasterKeyExec)] = "powershell";
                 customSettings[RavenConfiguration.GetKey(x => x.Security.MasterKeyExecArguments)] = $"{keyArgs}";
                 customSettings[RavenConfiguration.GetKey(x => x.Security.CertificateExec)] = "powershell";
