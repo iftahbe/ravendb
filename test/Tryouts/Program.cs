@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using FastTests.Server.Basic;
@@ -10,6 +11,7 @@ using Newtonsoft.Json.Linq;
 using Raven.Server.Documents;
 using Raven.Server.Documents.Queries.AST;
 using Raven.Server.Documents.Queries.Parser;
+using Raven.Server.Utils;
 using Sparrow;
 using Xunit.Sdk;
 
@@ -49,6 +51,14 @@ namespace Tryouts
 
         public static void Main(string[] args)
         {
+            var first = new X509Certificate2(@"C:\work\cluster-test\onenode.Cluster.Settings\A\cluster.server.certificate.onenode.pfx");
+            var second = new X509Certificate2(@"C:\work\ravendb-v4.1\src\Raven.Server\bin\Debug\netcoreapp2.1\cluster.server.certificate.onenode.pfx");
+
+            var hash1 = CertificateUtils.GetPublicKeyPinningHash(first);
+            var hash2 = CertificateUtils.GetPublicKeyPinningHash(second);
+
+            var equals = hash2.Equals(hash1);
+
             var mre = new ManualResetEventSlim();
            
             var t2 = Task.Run(() =>

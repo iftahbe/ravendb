@@ -577,6 +577,26 @@ namespace FastTests
             return clientCertificate;
         }
 
+        protected void AskCluster2ToTrustCluster1(X509Certificate2 cluster1Cert, X509Certificate2 cluster2Cert, Dictionary<string, DatabaseAccess> permissions, SecurityClearance clearance, RavenServer cluster2Leader)
+        {
+            using (var store = GetDocumentStore(new Options
+            {
+                Server = cluster2Leader,
+                ClientCertificate = cluster2Cert,
+                AdminCertificate = cluster2Cert
+            }))
+            {
+                var requestExecutor = store.GetRequestExecutor();
+                using (requestExecutor.ContextPool.AllocateOperationContext(out JsonOperationContext context))
+                {
+                    var command = new PutClientCertificateOperation("cluster1 certificate", cluster1Cert, permissions, clearance)
+                        .GetCommand(store.Conventions, context);
+
+                    requestExecutor.Execute(command, context);
+                }
+            }
+        }
+
         protected IDisposable RestoreDatabase(IDocumentStore store, RestoreBackupConfiguration config, TimeSpan? timeout = null)
         {
             var restoreOperation = new RestoreBackupOperation(config);
@@ -606,9 +626,9 @@ namespace FastTests
 
         protected string SetupServerAuthentication(
             IDictionary<string, string> customSettings = null,
-            string serverUrl = null)
+            string serverUrl = null, bool forceCreateNewCert = false)
         {
-            var serverCertPath = GenerateAndSaveSelfSignedCertificate();
+            var serverCertPath = GenerateAndSaveSelfSignedCertificate(forceCreateNewCert);
 
             if (customSettings == null)
                 customSettings = new ConcurrentDictionary<string, string>();

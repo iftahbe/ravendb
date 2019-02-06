@@ -126,17 +126,17 @@ namespace FastTests
 
         protected static volatile string _selfSignedCertFileName;
 
-        protected static string GenerateAndSaveSelfSignedCertificate()
+        protected static string GenerateAndSaveSelfSignedCertificate(bool forceCreateNewCert = false)
         {
-            if (_selfSignedCertFileName == null)
-                GenerateSelfSignedCertFileName();
+            if (_selfSignedCertFileName == null || forceCreateNewCert)
+                GenerateSelfSignedCertAndFileName();
 
             var tmp = Path.GetTempFileName();
             File.Copy(_selfSignedCertFileName, tmp, true);
             return tmp;
         }
 
-        private static void GenerateSelfSignedCertFileName()
+        private static void GenerateSelfSignedCertAndFileName()
         {
             lock (typeof(TestBase))
             {

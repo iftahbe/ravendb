@@ -110,6 +110,7 @@ namespace Raven.Server.Web.Authentication
                 Permissions = certificate.Permissions,
                 SecurityClearance = certificate.SecurityClearance,
                 Thumbprint = selfSignedCertificate.Thumbprint,
+                PublicKeyPinningHash = CertificateUtils.GetPublicKeyPinningHash(selfSignedCertificate),
                 NotAfter = selfSignedCertificate.NotAfter
             };
 
@@ -295,8 +296,7 @@ namespace Raven.Server.Web.Authentication
                     Name = certDef.Name,
                     Permissions = certDef.Permissions,
                     SecurityClearance = certDef.SecurityClearance,
-                    Password = certDef.Password,
-
+                    Password = certDef.Password
                 };
 
                 if (x509Certificate.HasPrivateKey)
@@ -310,6 +310,7 @@ namespace Raven.Server.Web.Authentication
                 // The first certificate in the collection will be the primary certificate and its thumbprint will be the one shown in a GET request
                 // The other certificates are secondary certificates and will contain a link to the primary certificate.
                 currentCertDef.Thumbprint = x509Certificate.Thumbprint;
+                currentCertDef.PublicKeyPinningHash = CertificateUtils.GetPublicKeyPinningHash(x509Certificate);
                 currentCertDef.NotAfter = x509Certificate.NotAfter;
                 currentCertDef.Certificate = Convert.ToBase64String(x509Certificate.Export(X509ContentType.Cert));
 
@@ -482,6 +483,7 @@ namespace Raven.Server.Web.Authentication
                                 Permissions = new Dictionary<string, DatabaseAccess>(),
                                 SecurityClearance = SecurityClearance.ClusterNode,
                                 Thumbprint = Server.Certificate.Certificate.Thumbprint,
+                                PublicKeyPinningHash = CertificateUtils.GetPublicKeyPinningHash(Server.Certificate.Certificate),
                                 NotAfter = Server.Certificate.Certificate.NotAfter
                             };
 
@@ -619,6 +621,7 @@ namespace Raven.Server.Web.Authentication
                                 Permissions = new Dictionary<string, DatabaseAccess>(),
                                 SecurityClearance = SecurityClearance.ClusterNode,
                                 Thumbprint = Server.Certificate.Certificate.Thumbprint,
+                                PublicKeyPinningHash = CertificateUtils.GetPublicKeyPinningHash(Server.Certificate.Certificate),
                                 NotAfter = Server.Certificate.Certificate.NotAfter
                             };
 
@@ -627,14 +630,15 @@ namespace Raven.Server.Web.Authentication
                     }
                     else if (wellKnown != null && wellKnown.Contains(clientCert.Thumbprint, StringComparer.OrdinalIgnoreCase))
                     {
-                        var serverCertDef = new CertificateDefinition
+                        var wellKnownCertDef = new CertificateDefinition
                         {
                             Name = "Well Known Admin Certificate",
                             Permissions = new Dictionary<string, DatabaseAccess>(),
                             SecurityClearance = SecurityClearance.ClusterAdmin,
                             Thumbprint = clientCert.Thumbprint,
+                            PublicKeyPinningHash = CertificateUtils.GetPublicKeyPinningHash(clientCert)
                         };
-                        certificate = ctx.ReadObject(serverCertDef.ToJson(), "WellKnown/Certificate/Definition");
+                        certificate = ctx.ReadObject(wellKnownCertDef.ToJson(), "WellKnown/Certificate/Definition");
                     }
                 }
 
@@ -696,6 +700,7 @@ namespace Raven.Server.Web.Authentication
                         Permissions = newCertificate.Permissions,
                         SecurityClearance = newCertificate.SecurityClearance,
                         Thumbprint = existingCertificate.Thumbprint,
+                        PublicKeyPinningHash = existingCertificate.PublicKeyPinningHash,
                         NotAfter = existingCertificate.NotAfter
                     }));
                 await ServerStore.Cluster.WaitForIndexNotification(putResult.Index);
